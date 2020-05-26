@@ -7,6 +7,10 @@ const twit = require('twit')
 
 dotenv.config();
 
+if (!fs.existsSync("./media")) {
+  fs.mkdirSync("./media");
+}
+
 const T = new twit({
   consumer_key: process.env.CONSUMER_KEY,
   consumer_secret: process.env.CONSUMER_SECRET,
