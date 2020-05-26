@@ -7,11 +7,17 @@ const twit = require('twit')
 
 dotenv.config();
 
-var T = new twit({
+const T = new twit({
   consumer_key: process.env.CONSUMER_KEY,
   consumer_secret: process.env.CONSUMER_SECRET,
   access_token: process.env.ACCESS_TOKEN,
   access_token_secret: process.env.ACCESS_TOKEN_SECRET,
+})
+
+T.get('account/verify_credentials', {
+  include_entities: false,
+  skip_status: true,
+  include_email: false
 })
 
 async function startScraping(callback) {
@@ -21,73 +27,56 @@ async function startScraping(callback) {
   /* Start processing the response */
   const $ = cheerio.load(response);
 
+  /* Form the scrapped  site, sometime we get a video or an img so we need figure out */
   const mediaType = $('.blog-post-content').children().children()[0].name
 
   /* Parse details from the html with query selectors */
   const title = $('h1.single-blog-post-title').text();
 
-  let videoSrc, timeSize;
+  let mediaSrc;
 
   if (mediaType === 'video') {
-    videoSrc = $('.blog-post-content video source').next().attr('src')
-    timeSize = 4000
+    mediaSrc = $('.blog-post-content video source').next().attr('src')
   } else {
-    videoSrc = $('.blog-post-content p img').attr('data-src')
-    timeSize = 6000
+    mediaSrc = $('.blog-post-content p img').attr('data-src')
   }
-  const videoSrcSplit = videoSrc.split("/");
-  const videoName = videoSrcSplit[videoSrcSplit.length - 1];
 
+  const mediaSrcSplit = mediaSrc.split("/");
+  const mediaName = mediaSrcSplit[mediaSrcSplit.length - 1];
 
-  const file = fs.createWriteStream(`./videos/${videoName}`);
+  const file = fs.createWriteStream(`./media/${mediaName}`);
 
-  file.on('finish', function () {
-    // pipe done here, do something with file
+  file.on('finish', () => {
+    console.log("file saved");
+    callback({ title, mediaName })
   });
 
-  try {
-    axios({
-      method: 'get',
-      url: videoSrc,
-      responseType: 'stream'
-    }).then(res => res.data.pipe(file))
-      .then(() => {
-        setTimeout(() => {
-          callback({ title, videoName })
-        }, timeSize);
-      })
-      .catch(err => console.log("Axios Err: " + err));
-  } catch (error) {
-    console.log("Https: " + error);
-  }
+  axios({
+    method: 'get',
+    url: mediaSrc,
+    responseType: 'stream'
+  }).then(res => res.data.pipe(file))
+    .catch(err => console.log("Axios Err: " + err));
 }
 
-
-
-T.get('account/verify_credentials', {
-  include_entities: false,
-  skip_status: true,
-  include_email: false
-})
-
-var stream = T.stream('statuses/filter', { track: '@DevlifeBot' });
+const stream = T.stream('statuses/filter', { track: '@DevlifeBot' });
 stream.on('tweet', tweetEvent);
 
 function tweetEvent(tweet) {
-  var name = tweet.user.screen_name;
-  var nameID = tweet.id_str;
+  const name = tweet.user.screen_name;
+  const nameID = tweet.id_str;
 
-  startScraping(({ title, videoName }) => {
+  startScraping(({ title, mediaName }) => {
 
-    const file_path = "./videos/" + videoName;
+    const file_path = "./media/" + mediaName;
 
-    T.postMediaChunked({ file_path }, function (err, data, response) {
+    T.postMediaChunked({ file_path }, (err, data, response) => {
 
       if (!err) {
         const mediaIdStr = data.media_id_string;
         const meta_params = { media_id: mediaIdStr };
 
-        T.post('media/metadata/create', meta_params, function (err, data, response) {
+        T.post('media/metadata/create', meta_params, (err, data, response) => {
 
           if (!err) {
             const reply = "@" + name + " " + title;
@@ -97,7 +86,7 @@ function tweetEvent(tweet) {
               media_ids: [mediaIdStr]
             };
 
-            T.post('statuses/update', params, function (err, tweet, response) {
+            T.post('statuses/update', params, (err, tweet, response) => {
 
               if (!err) {
                 console.log('Tweeted 🚀 ');
