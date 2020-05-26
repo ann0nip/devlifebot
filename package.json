@@ -1,0 +1,20 @@
+{
+  "name": "allobbypt",
+  "version": "1.0.0",
+  "description": "Just a twitter bot",
+  "main": "index.js",
+  "scripts": {
+    "start": "node ./index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "@ann0nip",
+  "license": "ISC",
+  "dependencies": {
+    "axios": "^0.19.2",
+    "cheerio": "^1.0.0-rc.3",
+    "dotenv": "^8.2.0",
+    "node-cron": "^2.0.3",
+    "request-promise": "^4.2.5",
+    "twit": "^2.2.11"
+  }
+}

@@ -1,0 +1,4 @@
+.DS_Store
+.env
+/videos
+/node_modules
